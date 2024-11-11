@@ -3,29 +3,29 @@
 #include <string.h>
 #include <time.h>
 
-void crypt(char *text, int chav);
-void decrypt(char *text, int chav);
+void cripto(char *text, int chav);
+void decripto(char *text, int chav);
 void addUsr();
 void lstUsr();
 void showSenha();
 void updtUsr(char *loggedUser, int userPerm);
 void delUsr();
-int login(char *username, int *perm);
+int login(char *nomeUsuario, int *perm);
 void menuAdmin();
-void menuUser(char *username);
+void menuUsuario(char *nomeUsuario);
 int hasAdmin();
 
 int main() {
     int opcao;
-    char username[100];
+    char nomeUsuario[100];
     int perm;
-    int firstAccess;
+    int primAcess;
     
     do {
-        firstAccess = !hasAdmin(); // Verifica no início de cada loop
+        primAcess = !hasAdmin(); // Verifica no início de cada loop
         
         printf("\n1 - Login\n");
-        if(firstAccess) {
+        if(primAcess) {
             printf("2 - Primeiro Acesso\n");
         }
         printf("0 - Sair\n");
@@ -34,14 +34,14 @@ int main() {
         
         switch(opcao) {
             case 1:
-                printf("Username: ");
-                scanf("%s", username);
+                printf("nomeUsuario: ");
+                scanf("%s", nomeUsuario);
                 
-                if(login(username, &perm)) {
+                if(login(nomeUsuario, &perm)) {
                     if(perm == 1) {
                         menuAdmin();
                     } else {
-                        menuUser(username);
+                        menuUsuario(nomeUsuario);
                     }
                 } else {
                     printf("Login falhou!\n");
@@ -49,7 +49,7 @@ int main() {
                 break;
                 
             case 2:
-                if(firstAccess) {
+                if(primAcess) {
                     addUsr();
                 }
                 break;
@@ -79,23 +79,23 @@ int hasAdmin() {
 }
 
 /*-Funcoes de criptografia e descriptografia da senha-*/
-void crypt(char *text, int chav) {
+void cripto(char *text, int chav) {
     int i;
     for(i = 0; text[i] != '\0'; i++) {
         text[i] = text[i] + chav;
     }
 }
 
-void decrypt(char *text, int chav) {
+void decripto(char *text, int chav) {
     int i;
     for(i = 0; text[i] != '\0'; i++) {
         text[i] = text[i] - chav;
     }
 }
 
-int login(char *username, int *perm) {
-    char senha[100], storedUser[100], storedPass[100];
-    int storedPerm, ativ, chav;
+int login(char *nomeUsuario, int *perm) {
+    char senha[100], GuardUsuario[100], GuardSenha[100];
+    int GuardPerms, ativ, chav;
     
     printf("Senha: ");
     scanf("%s", senha);
@@ -103,14 +103,14 @@ int login(char *username, int *perm) {
     FILE *file = fopen("users.txt", "r");
     if(!file) return 0;
     
-    while(fscanf(file, "%s %s %d %d %d", storedUser, storedPass, &storedPerm, &ativ, &chav) == 5) {
-        if(strcmp(username, storedUser) == 0 && ativ) {
-            char decryptedPass[100];
-            strcpy(decryptedPass, storedPass);
-            decrypt(decryptedPass, chav);
+    while(fscanf(file, "%s %s %d %d %d", GuardUsuario, GuardSenha, &GuardPerms, &ativ, &chav) == 5) {
+        if(strcmp(nomeUsuario, GuardUsuario) == 0 && ativ) {
+            char decriptopass[100];
+            strcpy(decriptopass, GuardSenha);
+            decripto(decriptopass, chav);
             
-            if(strcmp(senha, decryptedPass) == 0) {
-                *perm = storedPerm;
+            if(strcmp(senha, decriptopass) == 0) {
+                *perm = GuardPerms;
                 fclose(file);
                 return 1;
             }
@@ -155,7 +155,7 @@ void menuAdmin() {
     } while(opcao != 0);
 }
 
-void menuUser(char *username) {
+void menuUsuario(char *nomeUsuario) {
     int opcao;
     
     do {
@@ -169,7 +169,7 @@ void menuUser(char *username) {
         switch(opcao) {
             
             case 1:
-                updtUsr(username, 2);
+                updtUsr(nomeUsuario, 2);
                 break;
                 
             case 2:
@@ -199,7 +199,7 @@ void addUsr() {
     
     srand(time(NULL));
     int chav = rand() % 100 + 1;
-    crypt(senha, chav);
+    cripto(senha, chav);
     
     FILE *file = fopen("users.txt", "a");
     if(file) {
@@ -245,7 +245,7 @@ void showSenha() {
             if(strcmp(usuario, procusr) == 0 && ativ) {
                 char decriptSen[100];
                 strcpy(decriptSen, senha);
-                decrypt(decriptSen, chav);
+                decripto(decriptSen, chav);
                 printf("Senha do usuario %s: %s\n", usuario, decriptSen);
                 encntrd = 1;
                 break;
@@ -287,7 +287,7 @@ void updtUsr(char *loggedUser, int userPerm) {
                 
                 srand(time(NULL));
                 chav = rand() % 100 + 1;
-                crypt(senha, chav);
+                cripto(senha, chav);
                 encntrd = 1;
             }
             fprintf(temp, "%s %s %d %d %d\n", usuario, senha, perm, ativ, chav);
