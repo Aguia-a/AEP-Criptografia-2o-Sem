@@ -8,15 +8,123 @@ void decrypt(char *text, int chav);
 void addUsr();
 void lstUsr();
 void showSenha();
-void updtUsr();
+void updtUsr(char *loggedUser, int userPerm);
 void delUsr();
+int login(char *username, int *perm);
+void menuAdmin();
+void menuUser(char *username);
+int hasAdmin();
 
 int main() {
+    int opcao;
+    char username[100];
+    int perm;
+    int firstAccess;
     
+    do {
+        firstAccess = !hasAdmin(); // Verifica no início de cada loop
+        
+        printf("\n1 - Login\n");
+        if(firstAccess) {
+            printf("2 - Primeiro Acesso\n");
+        }
+        printf("0 - Sair\n");
+        printf("Digite uma opcao: ");
+        scanf("%d", &opcao);
+        
+        switch(opcao) {
+            case 1:
+                printf("Username: ");
+                scanf("%s", username);
+                
+                if(login(username, &perm)) {
+                    if(perm == 1) {
+                        menuAdmin();
+                    } else {
+                        menuUser(username);
+                    }
+                } else {
+                    printf("Login falhou!\n");
+                }
+                break;
+                
+            case 2:
+                if(firstAccess) {
+                    addUsr();
+                }
+                break;
+        }
+    } while(opcao != 0);
+    
+    return 0;
+}
+
+int hasAdmin() {
+    char usuario[100], senha[100];
+    int perm, ativ, chav;
+    
+    FILE *file = fopen("users.txt", "r");
+    if(!file) return 0; // Se o arquivo não existe, retorna 0
+    
+    int found = 0;
+    while(fscanf(file, "%s %s %d %d %d", usuario, senha, &perm, &ativ, &chav) == 5) {
+        if(perm == 1 && ativ == 1) { // Verifica se existe admin ativo
+            found = 1;
+            break;
+        }
+    }
+    
+    fclose(file);
+    return found;
+}
+
+/*-Funcoes de criptografia e descriptografia da senha-*/
+void crypt(char *text, int chav) {
+    int i;
+    for(i = 0; text[i] != '\0'; i++) {
+        text[i] = text[i] + chav;
+    }
+}
+
+void decrypt(char *text, int chav) {
+    int i;
+    for(i = 0; text[i] != '\0'; i++) {
+        text[i] = text[i] - chav;
+    }
+}
+
+int login(char *username, int *perm) {
+    char senha[100], storedUser[100], storedPass[100];
+    int storedPerm, ativ, chav;
+    
+    printf("Senha: ");
+    scanf("%s", senha);
+    
+    FILE *file = fopen("users.txt", "r");
+    if(!file) return 0;
+    
+    while(fscanf(file, "%s %s %d %d %d", storedUser, storedPass, &storedPerm, &ativ, &chav) == 5) {
+        if(strcmp(username, storedUser) == 0 && ativ) {
+            char decryptedPass[100];
+            strcpy(decryptedPass, storedPass);
+            decrypt(decryptedPass, chav);
+            
+            if(strcmp(senha, decryptedPass) == 0) {
+                *perm = storedPerm;
+                fclose(file);
+                return 1;
+            }
+        }
+    }
+    
+    fclose(file);
+    return 0;
+}
+
+void menuAdmin() {
     int opcao;
     
     do {
-
         printf("\n1 - Adicionar Usuario\n");
         printf("2 - Listar Usuarios\n");
         printf("3 - Atualizar Usuario\n");
@@ -28,65 +136,50 @@ int main() {
         scanf("%d", &opcao);
         
         switch(opcao) {
-
             case 1:
                 addUsr();
                 break;
-
             case 2:
                 lstUsr();
                 break;
-
             case 3:
-                updtUsr();
+                updtUsr(NULL, 1); // NULL indica admin
                 break;
-
             case 4:
                 delUsr();
                 break;
-
             case 5:
                 showSenha();
                 break;
-
         }
-
     } while(opcao != 0);
+}
+
+void menuUser(char *username) {
+    int opcao;
     
-    return 0;
+    do {
+        printf("\n1 - Atualizar Senha\n");
+        printf("2 - Listar Usuarios\n");
+        printf("0 - Sair\n");
 
+        printf("Digite uma opcao: ");
+        scanf("%d", &opcao);
+        
+        switch(opcao) {
+            
+            case 1:
+                updtUsr(username, 2);
+                break;
+                
+            case 2:
+                lstUsr();
+                break;
+        }
+    } while(opcao != 0);
 }
 
-/*-Funcoes de criptografia e descriptografia da senha-*/
-void crypt(char *text, int chav) {
-
-    int i;
-
-    for(i = 0; text[i] != '\0'; i++) {
-
-        text[i] = text[i] + chav;
-
-    }
-
-}
-
-void decrypt(char *text, int chav) {
-
-    int i;
-
-    for(i = 0; text[i] != '\0'; i++) {
-
-        text[i] = text[i] - chav;
-
-    }
-
-}
-/*------------Fim Cript e Decript de senha------------*/
-
-/*---------------Funcoes de Gerenciamentos dos usuarios---------------*/
-/*--------Adicionar Usuario--------*/
 void addUsr() {
-
     char usuario[100], senha[100];
     int perm;
     
@@ -96,36 +189,29 @@ void addUsr() {
     printf("Senha: ");
     scanf("%s", senha);
     
-    printf("Permissao (1 - Admin, 2 - Usuario padrao): ");
-    scanf("%d", &perm);
+    if(!hasAdmin()) {
+        perm = 1; // Se é primeiro acesso, força criação de admin
+        printf("Usuario criado como administrador (primeiro acesso)\n");
+    } else {
+        printf("Permissao (1 - Admin, 2 - Usuario padrao): ");
+        scanf("%d", &perm);
+    }
     
-    //Faz a criptografia da senha
     srand(time(NULL));
     int chav = rand() % 100 + 1;
     crypt(senha, chav);
     
-    //Salva em um arquivo de nome users.txt
     FILE *file = fopen("users.txt", "a");
-
     if(file) {
-
         fprintf(file, "%s %s %d %d %d\n", usuario, senha, perm, 1, chav);
         fclose(file);
-        
         printf("Usuario Registrado!\n");
-
     } else {
-
         printf("Nao foi possivel adicionar o usuario.\n");
-
     }
-
 }
-/*------------Fim Add Usu----------*/
 
-/*-------------Listagem De Usuarios-------------*/
 void lstUsr() {
-
     char usuario[100], senha[100];
     int perm, ativ, chav;
     
@@ -133,33 +219,19 @@ void lstUsr() {
     printf("Usuario\t\tPermissao\tStatus\n");
     
     FILE *file = fopen("users.txt", "r");
-
     if(file) {
-
         while(fscanf(file, "%s %s %d %d %d", usuario, senha, &perm, &ativ, &chav) == 5) {
-
             if(ativ) {
-
                 printf("%s\t\t%d\t\t%s\n", usuario, perm, ativ ? "Ativo" : "Inativo");
-
             }
-
         }
-
         fclose(file);
-
     } else {
-
         printf("Nao existe nenhum usuario registrado.\n");
-
     }
-
 }
-/*-----------------Fim List Usu-----------------*/
 
-/*--------Mostrar senha armazenada descriptografada--------*/
 void showSenha() {
-    
     char procusr[100], usuario[100], senha[100];
     int perm, ativ, chav;
     int encntrd = 0;
@@ -168,73 +240,57 @@ void showSenha() {
     scanf("%s", procusr);
     
     FILE *file = fopen("users.txt", "r");
-
     if(file) {
-
         while(fscanf(file, "%s %s %d %d %d", usuario, senha, &perm, &ativ, &chav) == 5) {
-
             if(strcmp(usuario, procusr) == 0 && ativ) {
-
                 char decriptSen[100];
                 strcpy(decriptSen, senha);
                 decrypt(decriptSen, chav);
-
                 printf("Senha do usuario %s: %s\n", usuario, decriptSen);
-
                 encntrd = 1;
-
                 break;
-
             }
-
         }
-
         fclose(file);
         
         if(!encntrd) {
-
             printf("Nao foi encontrado o usuario, ou o mesmo esta inativo.\n");
-
         }
-
     }
-
 }
-/*-------------Fim most senha descriptografada-------------*/
 
-/*-------------Atualizacao de Dados do Usuario-------------*/
-void updtUsr() {
+void updtUsr(char *loggedUser, int userPerm) {
     char procusr[100], usuario[100], senha[100];
     int perm, ativ, chav;
     int encntrd = 0;
     
-    printf("Digite o usuario para alterar: ");
-    scanf("%s", procusr);
+    if(userPerm == 2) { // Usuário normal
+        strcpy(procusr, loggedUser);
+    } else { // Admin
+        printf("Digite o usuario para alterar: ");
+        scanf("%s", procusr);
+    }
     
     FILE *file = fopen("users.txt", "r");
     FILE *temp = fopen("temp.txt", "w");
     
     if(file && temp) {
-
         while(fscanf(file, "%s %s %d %d %d", usuario, senha, &perm, &ativ, &chav) == 5) {
-
             if(strcmp(usuario, procusr) == 0 && ativ) {
-
                 printf("Nova senha: ");
                 scanf("%s", senha);
                 
-                printf("Novo nivel de permissao (1-admin, 2-usuario normal): ");
-                scanf("%d", &perm);
+                if(userPerm == 1) { // Apenas admin pode mudar permissões
+                    printf("Novo nivel de permissao (1-admin, 2-usuario normal): ");
+                    scanf("%d", &perm);
+                }
                 
-                // Criptografa nova senha
+                srand(time(NULL));
                 chav = rand() % 100 + 1;
                 crypt(senha, chav);
                 encntrd = 1;
-
             }
-
             fprintf(temp, "%s %s %d %d %d\n", usuario, senha, perm, ativ, chav);
-
         }
         
         fclose(file);
@@ -244,23 +300,14 @@ void updtUsr() {
         rename("temp.txt", "users.txt");
         
         if(encntrd) {
-
             printf("Usuario Atualizado!\n");
-
         } else {
-
             printf("Nao foi possivel encontrar o usuario\n");
-
         }
-
     }
-
 }
-/*---------------------Fim Atu Usuario---------------------*/
 
-/*--------------------Deletar Usuario--------------------*/
 void delUsr() {
-
     char procusr[100], usuario[100], senha[100];
     int perm, ativ, chav;
     int encntrd = 0;
@@ -272,22 +319,14 @@ void delUsr() {
     FILE *temp = fopen("temp.txt", "w");
     
     if(file && temp) {
-
         while(fscanf(file, "%s %s %d %d %d", usuario, senha, &perm, &ativ, &chav) == 5) {
-
             if(strcmp(usuario, procusr) == 0) {
-
                 ativ = 0;
                 encntrd = 1;
-
             }
-
             if(ativ) {
-
                 fprintf(temp, "%s %s %d %d %d\n", usuario, senha, perm, ativ, chav);
-
             }
-
         }
         
         fclose(file);
@@ -297,18 +336,9 @@ void delUsr() {
         rename("temp.txt", "users.txt");
         
         if(encntrd) {
-
             printf("Usuario Deletado!\n");
-
         } else {
-
             printf("Nao foi possivel encontrar o usuario!\n");
-
         }
-
     }
-
 }
-/*--------------------Fim Del Usuario--------------------*/
-
-/*---------------------Fim Func Geren de Usuario----------------------*/
