@@ -13,16 +13,19 @@ void delUsr();
 int login(char *nomeUsuario, int *perm);
 void menuAdmin();
 void menuUsuario(char *nomeUsuario);
-int hasAdmin();
+int temPerm();
 
 int main() {
+
     int opcao;
     char nomeUsuario[100];
     int perm;
     int primAcess;
     
     do {
-        primAcess = !hasAdmin(); // Verifica no início de cada loop
+
+        //Verifica se possui permissão
+        primAcess = !temPerm();
         
         printf("\n1 - Login\n");
         if(primAcess) {
@@ -59,7 +62,7 @@ int main() {
     return 0;
 }
 
-int hasAdmin() {
+int temPerm() {
     char usuario[100], senha[100];
     int perm, ativ, chav;
     
@@ -189,7 +192,7 @@ void addUsr() {
     printf("Senha: ");
     scanf("%s", senha);
     
-    if(!hasAdmin()) {
+    if(!temPerm()) {
         perm = 1; // Se é primeiro acesso, força criação de admin
         printf("Usuario criado como administrador (primeiro acesso)\n");
     } else {
